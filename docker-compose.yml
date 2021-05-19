@@ -1,13 +1,39 @@
 services:
   django-server:
     build: ./django-server
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./django-server:/code
+    ports:
+      - 3000:8000
+    depends_on:
+      - django-db
+
   django-db:
-    image: postgres:latest
+    image: postgres
+    restart: always
+    volumes:
+      - ./django-server/data/db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
 
   fastapi-service:
     build: ./fastapi-server
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - ./fastapi-server/app:/app
+    ports:
+      - 4000:8000
+    depends_on:
+      - fastapi-db
+
   fastapi-db:
     image: mongo:latest
+    restart: always
+    volumes:
+    - ./fastapi-server/data/db:/data/db
 
-  node-gateway:
-    build: ./node-gateway
+  # node-gateway:
+  #   build: ./node-gateway
