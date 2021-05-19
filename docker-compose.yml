@@ -1,0 +1,13 @@
+services:
+  django-server:
+    build: ./django-server
+  django-db:
+    image: postgres:latest
+
+  fastapi-service:
+    build: ./fastapi-server
+  fastapi-db:
+    image: mongo:latest
+
+  node-gateway:
+    build: ./node-gateway
