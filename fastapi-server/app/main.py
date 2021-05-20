@@ -3,37 +3,58 @@ from typing import Optional
 from fastapi import FastAPI, Body, Request
 from fastapi.responses import JSONResponse, HTMLResponse
 
-from ariadne import QueryType, graphql_sync, make_executable_schema
+from ariadne import QueryType, MutationType, ObjectType, graphql, convert_kwargs_to_snake_case, make_executable_schema
 from ariadne.constants import PLAYGROUND_HTML
+
+from app.models import assignment
 
 type_defs = """
     type Query {
-        hello: String!
+        assignemnts: [Assignment]!
+    }
+
+    type Mutation {
+        createAssignment(input: AssignmentInput!): Assignment
+    }
+
+    type Assignment {
+        id: ID!
+        title: String!
+        createdAt: String!
+        startsAt: String!
+        endsAt: String!
+    }
+
+    input AssignmentInput {
+        title: String!
+        createdAt: String!
+        startsAt: String!
+        endsAt: String!
     }
 """
 
 query = QueryType()
+mutation = MutationType()
 
-@query.field("hello")
-def resolve_hello(_, info):
-    request = info.context
-    user_agent = request.headers.get("User-Agent", "Guest")
-    return "Hello, %s!" % user_agent
+assignmentType = ObjectType('Assignment')
 
+@query.field('assignemnts')
+async def resolve_hello(_, _info):
+    return await assignment.all()
+    
+assignmentType.set_alias('id', '_id')
+assignmentType.set_alias('createdAt', 'created_at')
+assignmentType.set_alias('startsAt', 'starts_at')
+assignmentType.set_alias('endsAt', 'ends_at')
 
-schema = make_executable_schema(type_defs, query)
+@mutation.field("createAssignment")
+@convert_kwargs_to_snake_case
+async def resolve_create_assignment(_, _info, input):
+    return await assignment.create(input)
+
+schema = make_executable_schema(type_defs, [query, mutation], assignmentType)
 
 app = FastAPI()
-
-
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
-
-
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Optional[str] = None):
-    return {"item_id": item_id, "q": q}
 
 @app.get("/graphql")
 def graphql_playground():
@@ -41,8 +62,8 @@ def graphql_playground():
 
 
 @app.post("/graphql")
-def graphql_server(request: Request, query = Body(default=''), variables = Body(default={}), operation_name = Body(default=None)):
-    success, result = graphql_sync(
+async def graphql_server(request: Request, query = Body(default=''), variables = Body(default={}), operation_name = Body(default=None)):
+    success, result = await graphql(
         schema,
         {
             "query": query,
