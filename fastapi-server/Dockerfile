@@ -1,6 +1,6 @@
 FROM python:3.7
 
-RUN pip install fastapi uvicorn
+RUN pip install fastapi uvicorn ariadne
 
 COPY ./app /app
 
